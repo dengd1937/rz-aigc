@@ -14,10 +14,14 @@ load_dotenv()
 
 # 初始化客户端
 client = OpenAI()
+# client = OpenAI(
+#     api_key=os.getenv("DASHSCOPE_API_KEY"),
+#     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+# )
 
 # 模型列表
 MODEL_NAMES = ["gpt-3.5-turbo", "gpt-4.1-mini"]
-# MODEL_NAMES = ['qwen2.5:8b']
+# MODEL_NAMES = ['qwen2.5-72b-instruct']
 
 def parse_choices(choices_str: str) -> List[str]:
     """解析选项字符串"""
@@ -153,6 +157,9 @@ def main():
     # total = len(df)
     # print(f"共 {total} 条数据")
 
+    # 创建一个列表来保存详细结果
+    details = []
+
     # 为每个模型准备统计结果
     model_stats = {}
 
@@ -191,32 +198,26 @@ def main():
             # zero_shot
             zero_shot_response = call_api_zero_shot(prompt, model)
             zero_shot_answer = extract_answer(zero_shot_response)
-            time.sleep(0.5)  # 避免请求过快
 
             # zero_shot_cot
             cot_response = call_api_zero_shot_cot(prompt, model)
             cot_answer, cot_process = extract_answer_and_process(cot_response)
-            time.sleep(0.5)  # 避免请求过快
 
             # one_shot
             one_shot_response = call_api_one_shot(prompt, model)
             one_shot_answer = extract_answer(one_shot_response)
-            time.sleep(0.5)  # 避免请求过快
 
             # one_shot_cot
             one_shot_cot_response = call_api_one_shot_cot(prompt, model)
-            one_shot_cot_answer = extract_answer(one_shot_cot_response)
-            time.sleep(0.5)  # 避免请求过快
+            one_shot_cot_answer, one_shot_cot_process = extract_answer_and_process(one_shot_cot_response)
 
             # three_shot
             three_shot_response = call_api_three_shot(prompt, model)
             three_shot_answer = extract_answer(three_shot_response)
-            time.sleep(0.5)  # 避免请求过快
 
             # three_shot_cot
             three_shot_cot_response = call_api_three_shot_cot(prompt, model)
-            three_shot_cot_answer = extract_answer(three_shot_cot_response)
-            time.sleep(0.5) # 避免请求过快
+            three_shot_cot_answer, three_shot_cot_process = extract_answer_and_process(three_shot_cot_response)
 
             # 更新统计数据
             stats['total'] += 1
@@ -234,8 +235,33 @@ def main():
             if three_shot_cot_answer == answer:
                 stats['three_shot_cot_correct'] += 1
 
+            details.append({
+                'model': model,
+                'question': question,
+                'subject': subject,
+                'origin_answer': answer,
+                'zero_shot_answer': zero_shot_answer,
+                'cot_answer': cot_answer,
+                'cot_process': cot_process,
+                'one_shot_answer': one_shot_answer,
+                'one_shot_cot_answer': one_shot_cot_answer,
+                'one_shot_cot_process': one_shot_cot_process,
+                'three_shot_answer': three_shot_answer,
+                'three_shot_cot_answer': three_shot_cot_answer,
+                'three_shot_cot_process': three_shot_cot_process
+            })
+
         # 保存模型统计数据
         model_stats[model] = stats
+
+    details_df = pd.DataFrame(details)
+    details_path = './outputs/evaluation_details.csv'
+    if os.path.exists(details_path):
+        os.remove(details_path)
+        print(f"已删除已存在的文件: {details_path}")
+    os.makedirs(os.path.dirname(details_path), exist_ok=True)
+    details_df.to_csv(details_path, index=False, encoding='utf-8-sig')
+    print(f"详细评估结果已保存至{details_path}")
 
     print("\n=================== 所有模型总评估结果 ===================")
     for model, stats in model_stats.items():
