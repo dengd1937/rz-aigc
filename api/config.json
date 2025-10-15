@@ -1,0 +1,16 @@
+{
+  "default_client": "openai",
+  "clients": {
+    "openai": {
+      "model": "qwen3-30b-a3b-instruct-2507",
+      "api_key_name": "DASHSCOPE_API_KEY",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "temperature": 0.3
+    },
+    "ollama": {
+      "model": "qwen3:4b",
+      "base_url": "http://localhost:11434",
+      "temperature": 0.3
+    }
+  }
+}
