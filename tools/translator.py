@@ -128,6 +128,6 @@ def translate_csv(input_file, output_file):
 
 
 if __name__ == "__main__":
-    input_dir = '/Users/dengdi/MySpace/PycharmProjects/rz-aigc/mmlu/datasets/extracted_data/college-computer-science-test-00000-of-00001.csv'
-    output_dir = '/mmlu/datasets/chinese_data/chinese-college-computer-science-test-00000-of-00001.csv'
+    input_dir = '/Users/dengdi/MySpace/PycharmProjects/rz-aigc/eval/datasets/extracted_data/college-computer-science-test-00000-of-00001.csv'
+    output_dir = '/eval/datasets/chinese_data/chinese-college-computer-science-test-00000-of-00001.csv'
     translate_csv(input_dir, output_dir)

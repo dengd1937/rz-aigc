@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from tqdm import tqdm
 
-from mmlu.mmlu_evaluator_prompts import *
+from eval.mmlu_evaluator_prompts import *
 
 load_dotenv()
 

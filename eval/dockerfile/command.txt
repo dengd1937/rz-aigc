@@ -1,0 +1,4 @@
+docker run -it \
+  -v /your/models:/models \
+  your-vlm-image \
+  python run.py --model Qwen-VL --data MMBench

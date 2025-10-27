@@ -67,6 +67,6 @@ def extract_parquet_files(dataset_dir, output_dir, n_rows=None):
 
 if __name__ == "__main__":
     # 默认：使用原始函数
-    dataset_dir = '../mmlu/datasets'
+    dataset_dir = '../eval/datasets'
     output_dir = dataset_dir + '/extracted_data'
     extract_parquet_files(dataset_dir=dataset_dir, output_dir=output_dir, n_rows=10)
