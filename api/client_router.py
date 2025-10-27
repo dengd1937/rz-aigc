@@ -4,10 +4,13 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Iterator
 
 import requests
+from anthropic import Anthropic
+from dashscope import Generation
 from dotenv import load_dotenv
 from openai import OpenAI
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
+from zai import ZhipuAiClient
 
 
 class LLMClient(ABC):
@@ -116,10 +119,98 @@ class OpenAIClient(LLMClient):
         resp = self.client.chat.completions.create(**payload)
         return resp.choices[0].message.content
 
+class GLMNativeClient(LLMClient):
+
+    def __init__(self, cfg: Dict[str, Any]):
+        super().__init__(cfg)
+        load_dotenv()
+        self.client = ZhipuAiClient(api_key=os.getenv("ZAI_API_KEY"))
+
+    def chat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs):
+        payload = {
+            "model": self.cfg["model"],
+            "messages": messages,
+            "stream": stream,
+            "temperature": self.cfg.get("temperature", 0.8),
+            "max_tokens": self.cfg.get("max_tokens", 1024),
+            **kwargs,  # 调用端可强制覆盖
+        }
+        print(f"请求参数：{payload}")
+        if stream:
+            def _stream_gen():
+                for chunk in self.client.chat.completions.create(**payload):
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        yield delta
+            return _stream_gen()
+        else:
+            resp = self.client.chat.completions.create(**payload)
+            return resp.choices[0].message.content
+
+class QwenNativeClient(LLMClient):
+    def __init__(self, cfg: Dict[str, Any]):
+        super().__init__(cfg)
+        load_dotenv()
+
+    def chat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs):
+        payload = {
+            "model": self.cfg["model"],
+            "messages": messages,
+            "stream": stream,
+            "temperature": self.cfg.get("temperature", 0.8),
+            "max_tokens": self.cfg.get("max_tokens", 1024),
+            "enable_thinking": self.cfg.get("enable_thinking", False),
+            "result_format": "message",
+            "incremental_output": False,
+            **kwargs,  # 调用端可强制覆盖
+        }
+        print(f"请求参数：{payload}")
+        if not stream:
+            resp = Generation.call(api_key=os.getenv("DASHSCOPE_API_KEY"), **payload)
+            return resp.output.choices[0].message.content
+        else:
+            payload["incremental_output"] = True
+            def _stream_gen():
+                for resp in Generation.call(api_key=os.getenv("DASHSCOPE_API_KEY"),**payload):
+                    yield resp.output.choices[0].message.content
+
+            return _stream_gen()
+
+class ClaudeNativeClient(LLMClient):
+    def __init__(self, cfg: Dict[str, Any]):
+        super().__init__(cfg)
+        load_dotenv()
+        self.client = Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            base_url="https://api.anthropic.com"
+        )
+
+    def chat(self, messages: List[Dict[str, str]], stream: bool = False, **kwargs):
+        payload = {
+            "model": self.cfg["model"],
+            "messages": messages,
+            "stream": stream,
+            "temperature": self.cfg.get("temperature", 0.8),
+            "max_tokens": self.cfg.get("max_tokens", 1024),
+            **kwargs,  # 调用端可强制覆盖
+        }
+        print(f"请求参数：{payload}")
+        if not stream:
+            response = self.client.messages.create(**payload)
+            return response.content
+        else:
+            def _stream_gen():
+                for resp in self.client.messages.create(**payload):
+                    yield resp.type
+            return _stream_gen()
+
 
 CLIENT_REGISTRY: Dict[str, type[LLMClient]] = {
     "openai": OpenAIClient,
     "ollama": OllamaClient,
+    "glm_native": GLMNativeClient,
+    "qwen_native": QwenNativeClient,
+    "claude_native": ClaudeNativeClient
 }
 
 def build_client(config_path: str) -> LLMClient:

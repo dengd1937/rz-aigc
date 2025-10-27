@@ -1,5 +1,5 @@
 {
-  "default_client": "openai",
+  "default_client": "qwen_native",
   "clients": {
     "openai": {
       "model": "qwen3-30b-a3b-instruct-2507",
@@ -11,6 +11,17 @@
       "model": "qwen3:4b",
       "base_url": "http://localhost:11434",
       "temperature": 0.3
+    },
+    "glm_native": {
+      "model": "glm-4.6",
+      "temperature": 0.5,
+      "max_tokens": 2048
+    },
+    "qwen_native": {
+      "model": "qwen3-30b-a3b-instruct-2507"
+    },
+    "claude_native": {
+      "model": "claude-sonnet-4-5-20250929"
     }
   }
 }
