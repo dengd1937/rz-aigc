@@ -1,0 +1,16 @@
+[project]
+name = "rz-aigc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "dashscope>=1.25.1",
+    "fastparquet>=2024.11.0",
+    "langchain>=1.0.7",
+    "langchain-ollama>=1.0.0",
+    "openai>=2.8.1",
+    "pyarrow>=22.0.0",
+    "python-dotenv>=1.2.1",
+    "zai-sdk>=0.0.4.2",
+]
