@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import os
 from pathlib import Path
@@ -50,8 +52,8 @@ def _process_parquet_files(dataset_dir, output_dir, n_rows=None, output_format='
 
             # 如果指定了n_rows参数，则只提取前n行
             if n_rows is not None:
-                df = df.head(n_rows)
-                print(f"  - 总行数: {len(df)}, 提取行数: {len(df)}")
+                df = df.sample(n=n_rows)
+                print(f"  - 随机提取行数: {len(df)}")
             else:
                 print(f"  - 行数: {len(df)}")
 
@@ -120,10 +122,81 @@ def extract_parquet_to_jsonl(dataset_dir, output_dir, n_rows=None, filter_condit
     """
     _process_parquet_files(dataset_dir, output_dir, n_rows, 'jsonl', filter_conditions)
 
+def _extract_fields_from_jsonl(dataset_folder, output_file_name, field_mappings):
+
+    for file_name in os.listdir(dataset_folder):
+        if file_name.endswith(".jsonl"):
+            file_path = os.path.join(dataset_folder, file_name)
+            # 构造输出文件路径
+            output_file_path = os.path.join(dataset_folder, output_file_name)
+
+            with open(file_path, "r", encoding="utf-8") as infile, \
+                    open(output_file_path, "w", encoding="utf-8") as outfile:
+                for line in infile:
+                    data = json.loads(line)
+                    extracted_data = {}
+
+                    # 根据字段映射提取数据
+                    for output_field, field_spec in field_mappings.items():
+                        if callable(field_spec):
+                            # 如果是函数，调用函数处理
+                            extracted_data[output_field] = field_spec(data)
+                        else:
+                            # 如果是字符串，直接获取字段值
+                            extracted_data[output_field] = data.get(field_spec, None)
+
+                    # 写入到输出文件
+                    outfile.write(json.dumps(extracted_data, ensure_ascii=False) + "\n")
+
+def _extract_first_human_conversation(data):
+    """提取conversations中第一个from等于'human'的value值"""
+    conversations = data.get("conversations", [])
+    for conversation in conversations:
+        if conversation.get("from") == "human":
+            return conversation.get("value")
+    return None
+
+def extract_infinity_instruct_conversations(dataset_folder):
+    """
+    提取infinity_instruct数据集中conversations中第一个from等于"human"的vale值
+
+    Args:
+        dataset_folder (str): JSONL文件的目录
+    """
+    field_mappings = {
+        "id": "id",
+        "text": _extract_first_human_conversation
+    }
+
+    _extract_fields_from_jsonl(
+        dataset_folder=dataset_folder,
+        output_file_name="infinity_instruct.jsonl",
+        field_mappings=field_mappings
+    )
+
+def extract_chinese_cosmopedia_text(dataset_folder):
+    """
+    提取chinese_cosmopedia数据集中的text字段
+
+    Args:
+        dataset_folder (str): JSONL文件的目录
+    """
+    field_mappings = {
+        "id": "id",
+        "text": "text"
+    }
+
+    _extract_fields_from_jsonl(
+        dataset_folder=dataset_folder,
+        output_file_name="chinese_cosmopedia.jsonl",
+        field_mappings=field_mappings
+    )
+
 
 if __name__ == "__main__":
     # 默认：使用原始函数
-    dataset_dir = '../classify/datasets/infinity_instruct'
+    dataset_dir = '../classify/datasets/chinese_cosmopedia'
     output_dir = dataset_dir + '/extracted_data'
     # 示例：提取100条中文数据
-    extract_parquet_to_jsonl(dataset_dir=dataset_dir, output_dir=output_dir, n_rows=100, filter_conditions={'langdetect': 'zh-cn'})
+    extract_parquet_to_jsonl(dataset_dir=dataset_dir, output_dir=output_dir, n_rows=300)
+    extract_chinese_cosmopedia_text(dataset_folder=output_dir)

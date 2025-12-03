@@ -4,53 +4,17 @@ import random
 import time
 
 from dotenv import load_dotenv
-from langchain_community.chat_models import ChatTongyi
+from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 
 
-def extract_conversations(dataset_folder):
+def classify_text(content: str, model_name: str, max_retries: int = 3) -> str:
     """
-    提取conversations中第一个from等于"human"的vale值
+    使用Langchain的LCEL表达式对文本进行分类
 
     Args:
-        dataset_folder (str): JSONL文件的目录
-    """
-    for file_name in os.listdir(dataset_folder):
-        if file_name.endswith(".jsonl"):
-            file_path = os.path.join(dataset_folder, file_name)
-            # 构造输出文件路径
-            output_file_name = "infinity_instruct.jsonl"
-            output_file_path = os.path.join(dataset_folder, output_file_name)
-
-            with open(file_path, "r", encoding="utf-8") as infile, \
-                    open(output_file_path, "w", encoding="utf-8") as outfile:
-                for line in infile:
-                    data = json.loads(line)
-                    conversations = data["conversations"]
-                    first_human_value = None
-
-                    # 查找第一个from等于"human"的对话
-                    for conversation in conversations:
-                        if conversation["from"] == "human":
-                            first_human_value = conversation["value"]
-                            break
-
-                    # 创建新的数据结构，只包含id和提取的值
-                    extracted_data = {
-                        "id": data.get("id", None),
-                        "instruction": first_human_value
-                    }
-
-                    # 写入到输出文件
-                    outfile.write(json.dumps(extracted_data, ensure_ascii=False) + "\n")
-
-def classify_instruction(instruction: str, model_name: str, max_retries: int = 3) -> str:
-    """
-    使用Langchain的LCEL表达式对单条指令进行分类
-
-    Args:
-        instruction: 需要分类的指令文本
+        content: 需要分类的文本
 
     Returns:
         分类标签
@@ -85,8 +49,8 @@ def classify_instruction(instruction: str, model_name: str, max_retries: int = 3
     ```
     
     2. 输出要求：
-     - 请仅回复最适合的分类标签，不要包含其他解释或说明,不要输出思考过程、推理步骤或任何元认知内容。
-     - 只输出上面表格中中文分类名称（如：文学小说, 青春文学），标签之间用逗号分隔，没有额外文字解释。
+     - 请仅回复最适合的分类标签，不存在多个标签，不要包含其他解释或说明，不要输出思考过程、推理步骤或任何元认知内容。
+     - 只输出上面表格中中文分类名称（如：文学小说），没有额外文字解释。
     
     3. 判定原则与边界规则：
     - 优先级：若文本同时符合多类别，优先考虑核心主题与目标受众；如核心是成长、教育或社会洞察，优先对应"青春文学"或"人文社科/家庭教育"之类。若内容偏向技术性知识或科普事实，应优先"科普读物/自然科学"等。
@@ -100,19 +64,19 @@ def classify_instruction(instruction: str, model_name: str, max_retries: int = 3
     输出：
     经济管理
 
-    指令内容：
-    {instruction}
+    文本内容：
+    {content}
 
     分类标签：
     """
 
     prompt = PromptTemplate.from_template(classification_template)
-    model = ChatTongyi(model=model_name, temperature=0)
+    model = init_chat_model(model=model_name, temperature=0)
     chain = prompt | model | StrOutputParser()
     for attempt in range(max_retries):
         try:
             # 执行分类
-            result = chain.invoke({"instruction": instruction})
+            result = chain.invoke({"content": content})
             return result.strip()
         except Exception as e:
             print(f"第 {attempt + 1} 次尝试分类失败: {e}")
@@ -135,12 +99,20 @@ def classify_dataset(dataset_path: str, model_name: str, output_path: str):
         output_path: 输出分类结果的文件路径
     """
     start_line = 0
+    classification_stats = {}
     if os.path.exists(output_path):
         with open(output_path, "r", encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line)
                 start_line = max(start_line, data.get("id"))
+                classification = data.get("classification")
+                if classification in classification_stats:
+                    classification_stats[classification] += 1
+                else:
+                    classification_stats[classification] = 1
+
     print(f"从第 {start_line + 1} 行开始处理")
+    print(f"当前分类统计: {classification_stats}")
 
     base_name = os.path.splitext(output_path)[0]
     error_path = f"{base_name}_errors.jsonl"
@@ -154,15 +126,19 @@ def classify_dataset(dataset_path: str, model_name: str, output_path: str):
 
         for line in infile:
             data = json.loads(line)
-            instruction = data["instruction"]
+            text = data["text"]
             id = data.get("id")
             try:
                 # 仅测试使用
-                if id == 10:
-                    raise Exception("测试异常抛出")
+                # if id == 10:
+                #     raise Exception("测试异常抛出")
 
-                classification = classify_instruction(instruction, model_name)
+                classification = classify_text(text, model_name)
                 data["classification"] = classification
+                if classification in classification_stats:
+                    classification_stats[classification] += 1
+                else:
+                    classification_stats[classification] = 1
 
                 # 仅测试使用
                 # if id == 15:
@@ -174,21 +150,29 @@ def classify_dataset(dataset_path: str, model_name: str, output_path: str):
             except Exception as e:
                 error_data = {
                     "id": id,
-                    "instruction": instruction,
+                    "text": text,
                     "error": str(e)
                 }
                 errorfile.write(json.dumps(error_data, ensure_ascii=False) + "\n")
                 errorfile.flush()
+
+    print("\n" + "=" * 50)
+    print("分类处理完成！最终统计结果:")
+    print("=" * 50)
+    sorted_final_stats = sorted(classification_stats.items(), key=lambda x: x[1], reverse=True)
+    for category, count in sorted_final_stats:
+        print(f"{category}: {count}")
+    print("=" * 50)
 
 def main():
     # dataset_folder = "./datasets/infinity_instruct/extracted_data"
     # extract_conversations(dataset_folder)
 
     load_dotenv()
-    input_path = "./datasets/infinity_instruct/extracted_data/infinity_instruct.jsonl"
-    output_path = "./datasets/infinity_instruct/infinity_instruct_classify.jsonl"
-    qwen_model = "qwen3-235b-a22b-instruct-2507"
-    classify_dataset(input_path, qwen_model, output_path)
+    input_path = "./datasets/chinese_cosmopedia/extracted_data/chinese_cosmopedia.jsonl"
+    output_path = "./datasets/chinese_cosmopedia/output/chinese_cosmopedia_classify.jsonl"
+    model = "openai:gpt-5-nano"
+    classify_dataset(input_path, model, output_path)
 
 
 if __name__ == '__main__':
