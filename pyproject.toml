@@ -7,8 +7,10 @@ requires-python = ">=3.10"
 dependencies = [
     "dashscope>=1.25.1",
     "fastparquet>=2024.11.0",
+    "gradio>=6.1.0",
     "langchain>=1.0.7",
     "langchain-ollama>=1.0.0",
+    "ollama>=0.6.1",
     "openai>=2.8.1",
     "pyarrow>=22.0.0",
     "python-dotenv>=1.2.1",
