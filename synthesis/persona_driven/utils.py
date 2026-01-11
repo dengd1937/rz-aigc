@@ -49,6 +49,13 @@ def save_jsonl(data: List[Dict], filepath: str):
         data: 数据列表
         filepath: 文件路径
     """
+    import os
+
+    # 确保目录存在
+    directory = os.path.dirname(filepath)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+
     with open(filepath, 'w', encoding='utf-8') as f:
         for item in data:
             f.write(json.dumps(item, ensure_ascii=False) + '\n')

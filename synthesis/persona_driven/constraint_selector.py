@@ -1,6 +1,6 @@
 """
 约束条件选择器
-从约束库中随机选择并组合约束条件
+从约束库中智能选择并组合约束条件
 """
 
 import random
@@ -24,7 +24,7 @@ class ConstraintSelector:
 
     def select_constraints(self, num_constraints: int = 2) -> Tuple[List[str], str]:
         """
-        随机选择指定数量的约束条件
+        选择指定数量的约束条件
 
         Args:
             num_constraints: 要选择的约束数量，默认为2
@@ -32,29 +32,19 @@ class ConstraintSelector:
         Returns:
             (约束列表, 约束描述字符串)
         """
-        # 随机选择约束类别
-        category_keys = list(self.categories.keys())
-        selected_categories = random.sample(category_keys, min(num_constraints, len(category_keys)))
-
-        constraints = []
-        constraint_descriptions = []
-
-        for category in selected_categories:
-            # 获取该类别下的所有约束
-            category_constraints = [k for k in self.constraints.keys() if k.startswith(category)]
-            if category_constraints:
-                # 随机选择一个约束
-                constraint_key = random.choice(category_constraints)
-                constraints.append(constraint_key)
-
-                # 获取约束的具体描述
-                constraint_desc = random.choice(self.constraints[constraint_key])
-                constraint_descriptions.append(f"{constraint_key}: {constraint_desc}")
-
-        # 将约束描述连接成字符串
-        constraints_str = "，".join(constraint_descriptions)
-
-        return constraints, constraints_str
+        # 获取所有约束键
+        all_constraints = list(self.constraints.keys())
+        
+        # 随机选择约束
+        selected = random.sample(all_constraints, min(num_constraints, len(all_constraints)))
+        
+        # 生成描述
+        descriptions = []
+        for key in selected:
+            desc = random.choice(self.constraints[key])
+            descriptions.append(f"{key}: {desc}")
+        
+        return selected, "，".join(descriptions)
 
     def get_constraint_categories(self) -> List[str]:
         """获取所有约束类别"""

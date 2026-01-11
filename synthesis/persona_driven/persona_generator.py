@@ -10,10 +10,10 @@ from typing import List, Dict
 
 # 支持直接运行和作为包导入
 try:
-    from .persona_categories import CATEGORIES, PERSONA_TEMPLATES, ROLES, CHARACTERISTICS
+    from .persona_categories import CATEGORIES, PERSONA_TEMPLATES, ROLES, CHARACTERISTICS, CATEGORY_TO_ROLES
 except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from persona_categories import CATEGORIES, PERSONA_TEMPLATES, ROLES, CHARACTERISTICS
+    from persona_categories import CATEGORIES, PERSONA_TEMPLATES, ROLES, CHARACTERISTICS, CATEGORY_TO_ROLES
 
 
 class PersonaGenerator:
@@ -24,6 +24,7 @@ class PersonaGenerator:
         self.templates = PERSONA_TEMPLATES
         self.roles = ROLES
         self.characteristics = CHARACTERISTICS
+        self.category_to_roles = CATEGORY_TO_ROLES
 
     def generate_persona(self, category: str, detail_level: str = "medium") -> str:
         """
@@ -42,8 +43,13 @@ class PersonaGenerator:
         # 选择模板
         template = random.choice(self.templates)
 
-        # 选择角色类型
-        role = random.choice(self.roles)
+        # 根据分类选择合适的角色类型（关键改进）
+        if category in self.category_to_roles:
+            available_roles = self.category_to_roles[category]
+            role = random.choice(available_roles)
+        else:
+            # 如果分类不在映射中，使用通用角色
+            role = random.choice(self.roles)
 
         # 生成特征描述
         characteristics = self._generate_characteristics(detail_level)
