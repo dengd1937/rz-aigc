@@ -53,7 +53,7 @@ class PersonaDrivenSynthesizer:
         self.prompt_builder = PromptBuilder()
         self.llm_client = LLMClient(api_key, base_url, model)
 
-    def synthesize_preference_pair(self, persona: str) -> Dict:
+    def synthesize_preference_pair(self, persona: str, category: str = None) -> Dict:
         """
         合成一个完整的偏好数据对 (chosen/rejected)
 
@@ -80,7 +80,8 @@ class PersonaDrivenSynthesizer:
         prompt = self.prompt_builder.build_instruction_prompt(
             persona=persona,
             example=example,
-            constraints_description=constraint_info["constraint_description"]
+            constraints_description=constraint_info["constraint_description"],
+            category=category
         )
 
         # 4. 生成指令
@@ -263,7 +264,8 @@ class PersonaDrivenSynthesizer:
         prompt = self.prompt_builder.build_instruction_prompt(
             persona=persona,
             example=example,
-            constraints_description=constraint_info["constraint_description"]
+            constraints_description=constraint_info["constraint_description"],
+            category=category
         )
 
         # 4. 生成指令
@@ -324,7 +326,7 @@ class PersonaDrivenSynthesizer:
         try:
             category = persona_data["category"]
             if data_type == "preference":
-                result = self.synthesize_preference_pair(persona_data["persona"])
+                result = self.synthesize_preference_pair(persona_data["persona"], category)
             else:
                 result = self.synthesize_sft_data(persona_data["persona"], category)
 
@@ -390,7 +392,7 @@ class PersonaDrivenSynthesizer:
                 try:
                     category = persona_data["category"]
                     if data_type == "preference":
-                        result = self.synthesize_preference_pair(persona_data["persona"])
+                        result = self.synthesize_preference_pair(persona_data["persona"], category)
                     else:  # sft
                         result = self.synthesize_sft_data(persona_data["persona"], category)
 
